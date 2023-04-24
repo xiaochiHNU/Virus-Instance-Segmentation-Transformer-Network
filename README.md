@@ -18,4 +18,4 @@ code：5smq
 
 **How to use**
 
-Adjust the data path and run the code “train_Yolact_swin.py” and "eval.py". 
+Adjust the weight and data path in config and run the code train_Yolact_swin and eval. 
