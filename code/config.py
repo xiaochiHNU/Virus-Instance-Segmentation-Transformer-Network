@@ -7,8 +7,9 @@ os.makedirs('results/images/', exist_ok=True)
 os.makedirs('weights/', exist_ok=True)
 os.makedirs('tensorboard_log/', exist_ok=True)
 
-COLORS = np.array([[0, 0, 0], [50, 50, 255], [50, 255, 50], [255, 50, 50], [103, 58, 183], [100, 30, 60],   # [156, 39, 176]
-                   [63, 81, 181], [33, 150, 243], [3, 169, 244], [0, 188, 212], [20, 55, 200],
+# COLORS B G R的顺序
+COLORS = np.array([[0, 0, 0], [0, 0, 255], [0, 255, 0], [255, 0, 0], [0, 255, 255], [255, 0, 255],   # [156, 39, 176]
+                   [255, 255, 0], [33, 150, 243], [3, 169, 244], [0, 188, 212], [20, 55, 200],
                    [0, 150, 136], [76, 175, 80], [139, 195, 74], [205, 220, 57], [70, 25, 100],
                    [255, 235, 59], [255, 193, 7], [255, 152, 0], [255, 87, 34], [90, 155, 50],
                    [121, 85, 72], [158, 158, 158], [96, 125, 139], [15, 67, 34], [98, 55, 20],
@@ -43,7 +44,7 @@ PASCAL_CLASSES = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
                   'diningtable', 'dog', 'horse', 'motorbike', 'person',
                   'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor')
 
-Virus_CLASSES = ('RSV', 'SARS-CoV-2', 'FLUAV')
+Virus_CLASSES = ('RSV', 'SARS-CoV-2', 'FLUAV', 'HSV1', 'HAdV5', 'VACV')
 
 COCO_LABEL_MAP = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8,
                   9: 9, 10: 10, 11: 11, 13: 12, 14: 13, 15: 14, 16: 15, 17: 16,
@@ -90,7 +91,7 @@ class res101_coco:
             self.lr = 0.0005 * self.bs_factor
             self.warmup_init = self.lr * 0.1
             self.warmup_until = 500  # If adapted with bs_factor, inifinte loss may appear.
-            self.lr_steps = tuple([int(aa / self.bs_factor) for aa in (0, 8000, 15000, 25000, 40000)])
+            self.lr_steps = tuple([int(aa / self.bs_factor) for aa in (0, 10000, 15000, 25000, 40000)])  # (0, 8000, 15000, 25000, 40000)])
 
             self.pos_iou_thre = 0.5
             self.neg_iou_thre = 0.4
@@ -150,8 +151,8 @@ class swin_transformer(res101_coco):
 class res101_custom(res101_coco):
     def __init__(self, args):
         super().__init__(args)
-        self.class_names = 3
-        self.num_classes = 4
+        self.class_names = Virus_CLASSES
+        self.num_classes = len(Virus_CLASSES) + 1
         self.continuous_id = {(aa + 1): (aa + 1) for aa in range(self.num_classes - 1)}
 
         if self.mode == 'train':
