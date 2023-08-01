@@ -88,9 +88,105 @@ class ProtoNet(nn.Module):
 
     def forward(self, x):
         x = self.proto1(x)
-        x = self.upsample(x)
+        #x = self.upsample(x)
         x = self.proto2(x)
         return x
+
+class FPN(nn.Module):
+    def __init__(self, in_channels):
+        super().__init__()
+        self.in_channels = in_channels
+
+        self.lat_layers = nn.ModuleList([nn.Conv2d(x, 256, kernel_size=1) for x in self.in_channels])
+        self.pred_layers = nn.ModuleList([nn.Sequential(nn.Conv2d(256, 256, kernel_size=3, padding=1),
+                                                        nn.ReLU(inplace=True)) for _ in self.in_channels])
+
+        self.downsample_layers = nn.ModuleList([nn.Sequential(nn.Conv2d(256, 256, kernel_size=3, padding=1, stride=2),
+                                                              nn.ReLU(inplace=True)),
+                                                nn.Sequential(nn.Conv2d(256, 256, kernel_size=3, padding=1, stride=2),
+                                                              nn.ReLU(inplace=True))])
+
+        self.upsample_module = nn.ModuleList([nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
+                                              nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)])
+
+    def forward(self, backbone_outs):
+        p5_1 = self.lat_layers[2](backbone_outs[2])
+        p5_upsample = self.upsample_module[1](p5_1)
+
+        p4_1 = self.lat_layers[1](backbone_outs[1]) + p5_upsample
+        p4_upsample = self.upsample_module[0](p4_1)
+
+        p3_1 = self.lat_layers[0](backbone_outs[0]) + p4_upsample
+
+        p5 = self.pred_layers[2](p5_1)
+        p4 = self.pred_layers[1](p4_1)
+        p3 = self.pred_layers[0](p3_1)
+
+        p6 = self.downsample_layers[0](p5)
+        p7 = self.downsample_layers[1](p6)
+
+        return p3, p4, p5, p6, p7
+
+class DenseFPN_C1(nn.Module):
+    def __init__(self, in_channels):
+        super().__init__()
+        self.in_channels = in_channels
+
+        # lat_layers_1[0]中x对应96, [1]对应192, [2]对应384, [3]中x对应768
+        self.lat_layers_1 = nn.ModuleList([nn.Conv2d(x, 256, kernel_size=1) for x in self.in_channels])
+        self.lat_layers_3 = nn.ModuleList([nn.Conv2d(256, 256, kernel_size=3, padding=1)])
+        #self.lat_layers_3 = nn.ModuleList([nn.Conv2d(x, 256, kernel_size=3, padding=1) for x in self.in_channels])
+
+        self.pred_layers = nn.ModuleList([nn.Sequential(nn.Conv2d(256, 256, kernel_size=3, padding=1),
+                                                        nn.ReLU(inplace=True)) for _ in self.in_channels])
+
+        self.downsample_layers = nn.ModuleList([nn.Sequential(nn.Conv2d(256, 256, kernel_size=3, padding=1, stride=2),
+                                                              nn.ReLU(inplace=True)),
+                                                nn.Sequential(nn.Conv2d(256, 256, kernel_size=3, padding=1, stride=2),
+                                                              nn.ReLU(inplace=True))])
+
+        self.upsample_module = nn.ModuleList([nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
+                                              nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)])
+
+        self.coordatt = CoordAttplus(256, 256)
+
+    def forward(self, backbone_outs):
+
+        p4_1 = self.lat_layers_1[3](backbone_outs[3])   # conv 1*1*256
+        p4_2 = self.lat_layers_3[0](p4_1)               # conv 3*3*256
+        p4_upsample = self.upsample_module[0](p4_2)
+        p4_upsample2 = self.upsample_module[0](p4_upsample)
+        p4_upsample3 = self.upsample_module[0](p4_upsample2)
+
+        p3_1 = self.lat_layers_1[2](backbone_outs[2])   # conv 1*1*256
+        p3_2 = self.lat_layers_3[0](p3_1)               # conv 3*3*256
+        p3_upsample = self.upsample_module[0](p3_2)
+        p3_upsample2 = self.upsample_module[0](p3_upsample)
+        p3_3 = p3_2 + p4_upsample
+
+        p2_1 = self.lat_layers_1[1](backbone_outs[1])   # conv 1*1*256
+        p2_2 = self.lat_layers_3[0](p2_1)               # conv 3*3*256
+        p2_upsample = self.upsample_module[0](p2_2)
+        p2_3 = p2_2 + p3_upsample + p4_upsample2
+
+        p1_1 = self.lat_layers_1[0](backbone_outs[0])   # conv 1*1*256
+        p1_2 = self.lat_layers_3[0](p1_1)               # conv 3*3*256
+        p1_3 = p1_2 + p2_upsample + p3_upsample2 + p4_upsample3
+        p1_4 = self.coordatt(p1_3)
+
+        p1_out = self.pred_layers[0](p1_4)
+
+        p2_out = self.pred_layers[0](p2_3) + self.downsample_layers[0](p1_out)
+
+        p3_out = self.pred_layers[0](p3_3) + self.downsample_layers[0](p2_out)
+
+        p4_out = self.pred_layers[0](p4_2) + self.downsample_layers[0](p3_out)
+
+        p5_out = self.downsample_layers[0](p4_out)
+        p6_out = self.downsample_layers[1](p5_out)
+
+        return p1_out, p2_out, p3_out, p4_out, p5_out, p6_out
+
 
 class DenseFPN(nn.Module):
     def __init__(self, in_channels):
@@ -126,7 +222,7 @@ class DenseFPN(nn.Module):
         p3_3 = self.lat_layers_3[0](backbone_outs[0]) + p5_1_upsample2 + p4_1_upsample
 
         p3_out = self.pred_layers[0](p3_3)
-        p3_out = self.coordatt(p3_out)
+        #p3_out = self.coordatt(p3_out)
         p4_out = self.pred_layers[1](p4_3) + self.downsample_layers[0](p3_out)
         p5_out = self.pred_layers[2](p5_3) + self.downsample_layers[0](p4_out)
 
@@ -149,7 +245,9 @@ class Yolact(nn.Module):
             self.fpn = FPN(in_channels=(512, 1024, 2048))
         elif cfg.__class__.__name__ == 'swin_transformer':
             self.backbone = SwinTransformer()
+            #self.fpn = FPN(in_channels=(192, 384, 768))
             self.densefpn = DenseFPN(in_channels=(192, 384, 768))
+            self.densefpn_c1 = DenseFPN_C1(in_channels=(96, 192, 384, 768))
 
         self.proto_net = ProtoNet(coef_dim=self.coef_dim)
         self.prediction_layers = PredictionModule(cfg, coef_dim=self.coef_dim)
@@ -178,13 +276,17 @@ class Yolact(nn.Module):
 
     def forward(self, img, box_classes=None, masks_gt=None):
         outs = self.backbone(img)
-        outs = self.densefpn(outs[1:4])
+        #outs = self.fpn(outs[1:4])
+        #outs = self.densefpn(outs[1:4])
+        #outs = self.densefpn(outs[1:4])
+        outs = self.densefpn_c1(outs[0:4])
+
         proto_out = self.proto_net(outs[0])
         proto_out = proto_out.permute(0, 2, 3, 1).contiguous()
 
         class_pred, box_pred, coef_pred = [], [], []
 
-        for aa in outs:
+        for aa in outs[1:6]:
             class_p, box_p, coef_p = self.prediction_layers(aa)
             class_pred.append(class_p)
             box_pred.append(box_p)
