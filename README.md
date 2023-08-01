@@ -1,6 +1,6 @@
 # Virus-Instance-Segmentation-Transformer-Network
 
-This repository contains virus dataset and code (Virus-Instance-Segmentation-Transformer-Network) , provided by Hainan university, Chinese Center for Disease Control and Prevention and Huazhong Agricultural University.
+This repository contains virus dataset and code (Virus-Instance-Segmentation-Transformer-Network) , provided by Hainan University, Chinese Center for Disease Control and Prevention and Huazhong Agricultural University.
 
 **Dataset**
 
