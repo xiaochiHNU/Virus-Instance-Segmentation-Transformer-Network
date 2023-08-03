@@ -16,7 +16,7 @@ from config import get_config
 
 parser = argparse.ArgumentParser(description='YOLACT COCO Evaluation')
 parser.add_argument('--img_size', type=int, default=896, help='The image size for validation.')
-parser.add_argument('--weight', type=str, default='weights/loss_81.12_swin_transformer_13600.pth')
+parser.add_argument('--weight', type=str, default='weights/.pth')
 parser.add_argument('--train_bs', type=int, default=4, help='total training batch size')
 parser.add_argument('--traditional_nms', default=False, action='store_true', help='Whether to use traditional nms.')
 parser.add_argument('--val_num', default=-1, type=int, help='The number of images for test, set to -1 for all.')
