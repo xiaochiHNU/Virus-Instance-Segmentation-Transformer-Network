@@ -23,7 +23,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 parser = argparse.ArgumentParser(description='Yolact Training Script')
 parser.add_argument('--local_rank', type=int, default=0)
 parser.add_argument('--cfg', default='swin_transformer', help='The configuration name to use.')
-parser.add_argument('--train_bs', type=int, default=8, help='total training batch size')
+parser.add_argument('--train_bs', type=int, default=4, help='total training batch size')
 parser.add_argument('--img_size', default=896, type=int, help='The image size for training.')
 parser.add_argument('--resume', default=None, type=str, help='The path of the weight file to resume training with.')  # 'weights/best_77.39_swin_tiny_coco_23500.pth'
 parser.add_argument('--val_interval', default=10, type=int,
